@@ -1,0 +1,263 @@
+@import url("https://fonts.googleapis.com/css2?family=Michroma&display=swap");
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Michroma", sans-serif;
+  height: 100vh;
+}
+
+.container {
+
+  background-color: black;
+  color: #fff;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /*flex-direction: column;*/
+}
+.container #menu{
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding-left: 15px;
+  background-color: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+.container #con{
+ font-size: x-large;
+ height: 100px;
+ width: 50%;
+ /*background-color: blue;*/
+ 
+}
+.button {
+  border-radius: 4px;
+  background-color: #c1bab849;
+  border: none;
+  color: #FFFFFF;
+  text-align: center;
+  font-size: 20px;
+  padding: 20px;
+  width: 200px;
+  transition: all 0.5s;
+  cursor: pointer;
+  margin: 5px;
+}
+
+.button span {
+  cursor: pointer;
+  display: inline-block;
+  position: relative;
+  transition: 0.5s;
+}
+
+.button span:after {
+  content: '\00bb';
+  position: absolute;
+  opacity: 0;
+  top: 0;
+  right: -20px;
+  transition: 0.5s;
+}
+
+.button:hover span {
+  padding-right: 25px;
+}
+
+.button:hover span:after {
+  opacity: 1;
+  right: 0;
+}
+
+.loading-page {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: linear-gradient(to right, #2c5364, #203a43, #0f2027);
+
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  color: #191654;
+}
+
+#svg {
+  height: 150px;
+  width: 150px;
+  stroke: white;
+  fill-opacity: 0;
+  stroke-width: 3px;
+  stroke-dasharray: 4500;
+  animation: draw 8s ease;
+}
+
+@keyframes draw {
+  0% {
+    stroke-dashoffset: 4500;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.name-container {
+  height: 30px;
+  overflow: hidden;
+}
+
+.logo-name {
+  color: #fff;
+  font-size: 20px;
+  letter-spacing: 12px;
+  text-transform: uppercase;
+  margin-left: 20px;
+  font-weight: bolder;
+}
+.content{
+    height: 1500px;
+    width: 100%;
+}
+
+.sidenav {
+  height: 100%;
+  width: 0;
+  position: fixed;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  background-color: #111;
+  overflow-x: hidden;
+  transition: 0.5s;
+  padding-top: 60px;
+}
+
+.sidenav a {
+  padding: 8px 8px 8px 32px;
+  text-decoration: none;
+  font-size: 25px;
+  color: #818181;
+  display: block;
+  transition: 0.3s;
+}
+
+.sidenav a:hover {
+  color: #f1f1f1;
+}
+
+.sidenav .closebtn {
+  position: absolute;
+  top: 0;
+  right: 25px;
+  font-size: 36px;
+  margin-left: 50px;
+}
+
+@media screen and (max-height: 450px) {
+  .sidenav {padding-top: 15px;}
+  .sidenav a {font-size: 18px;}
+}
+
+.boutiques{
+  height: 125vh;
+  background-color: white;
+  padding-top: 5%;
+  
+}
+.boutiques1 img{
+  height: 80vh;
+  object-fit: contain;
+  float: left;
+  width: 70%;
+  padding-top: 5%;
+}
+.boutiques2{
+  height: 145px;
+  padding-left: 20%;
+  padding-top: 15%;
+  color: #000000;
+
+}
+.hov{
+  transition: ease-in-out 0.5s all;
+}
+.hov:hover{
+  transform: scale(1.1);
+  transition: ease-in-out 1s all;
+}
+.foot{
+  height: 55vh;
+  width: 100%;
+  background-color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  
+  foot sec1{
+    height: 100px;
+    width: 100px;
+  }
+  foot sec2{
+    height: 100px;
+    width: 100px;
+  }        
+  }
+#butt{
+  background-color: #000000;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  cursor: pointer;
+}
+.footer{
+  height: 25vh;
+  background-color: #02291f;
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+}
+.footer img{
+  height: 200px;
+  width: 200px;
+}
+.lastfoot{
+  border-top:1px solid white ;
+  height: 70vh;
+  background-color: #02291f;
+  list-style-type: none;
+  color: white;
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+}
+.social{
+  height: 20vh;
+  padding-bottom: 5% ;
+  background-color: #02291f;
+  color: white;
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  
+}
+.acce img{
+  height: 50px;
+  width: 50px;
+}
