@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Heart, Activity, ArrowRight, Stethoscope, Brain, Shield } from 'lucide-react';
 
 interface LandingPageProps {
@@ -96,7 +96,7 @@ function LandingPage({ onGetStarted }: LandingPageProps) {
             </h2>
             <div className="grid md:grid-cols-4 gap-8">
               <div className="flex flex-col items-center">
-                <div className="text-4xl font-bold text-blue-600 mb-2">99%</div>
+                <div className="text-4xl font-bold text-blue-600 mb-2">58%</div>
                 <div className="text-gray-600">Accuracy Rate</div>
               </div>
               <div className="flex flex-col items-center">
