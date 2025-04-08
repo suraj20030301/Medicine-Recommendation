@@ -370,9 +370,9 @@ function PredictionPage({ onBack, onLogout }: PredictionPageProps) {
             }} className="space-y-6">
               <button
                 type="submit"
-                disabled={!additionalInfo.trim()}
+                disabled={!canPredict}
                 className={`w-full py-4 rounded-xl text-white font-medium transition-all duration-200 ${
-                  additionalInfo.trim()
+                  canPredict
                     ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
                     : 'bg-gray-400 cursor-not-allowed'
                 }`}

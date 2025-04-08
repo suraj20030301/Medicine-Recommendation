@@ -1,5 +1,4 @@
-import React from 'react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Heart, Activity, ArrowRight, Stethoscope } from 'lucide-react';
 import LandingPage from './components/LandingPage';
 import PredictionPage from './components/PredictionPage';
