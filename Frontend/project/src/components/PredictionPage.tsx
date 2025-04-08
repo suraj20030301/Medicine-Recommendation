@@ -167,19 +167,42 @@ function PredictionPage({ onBack, onLogout }: PredictionPageProps) {
       timestamp: new Date().toISOString()
     };
 
-    console.log('Sending data to backend:', requestData);
+    try {
+      // Make API call to Flask backend
+      const response = await fetch('http://localhost:5000/predict', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          symptoms: requestData.symptoms.map(s => s.name).join(',')
+        })
+      });
 
-    // Simulate analysis process
-    for (let i = 0; i < analyses.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!response.ok) {
+        throw new Error('Failed to get prediction');
+      }
+
+      const data = await response.json();
+      
+      // Update analyses with real data from backend
       setAnalyses(prev => prev.map((analysis, index) => ({
         ...analysis,
-        status: index <= i ? 'complete' : 'pending'
+        status: 'complete'
       })));
-    }
 
-    setIsAnalyzing(false);
-    setShowCategories(true);
+      // Show categories and set initial recommendation
+      setShowCategories(true);
+      setSelectedCategory('disease');
+      setRecommendation(data.predicted_disease);
+
+    } catch (error) {
+      console.error('Error getting prediction:', error);
+      // Show error message to user
+      setRecommendation('Error getting prediction. Please try again.');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const handleCategoryClick = async (categoryId: string) => {
