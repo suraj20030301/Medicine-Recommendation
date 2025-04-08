@@ -123,6 +123,14 @@ function PredictionPage({ onBack, onLogout }: PredictionPageProps) {
   const [showCategories, setShowCategories] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [recommendation, setRecommendation] = useState<string | null>(null);
+  const [backendData, setBackendData] = useState<{
+    predicted_disease: string;
+    description: string;
+    medications: string;
+    diet: string;
+    precautions: string[];
+    workout: string[];
+  } | null>(null);
   const [analyses, setAnalyses] = useState<Analysis[]>([
     {
       title: 'Symptom Analysis',
@@ -154,39 +162,57 @@ function PredictionPage({ onBack, onLogout }: PredictionPageProps) {
     setShowCategories(false);
     setSelectedCategory(null);
     setRecommendation(null);
-
-    const requestData = {
-      symptoms: selectedSymptoms.map(id => {
-        const symptom = commonSymptoms.find(s => s.id === id);
-        return {
-          id,
-          name: symptom?.name
-        };
-      }),
-      additionalInformation: additionalInfo,
-      timestamp: new Date().toISOString()
-    };
+    setBackendData(null);
 
     try {
+      // Format symptoms as a comma-separated string
+      const symptomsString = selectedSymptoms
+        .map(id => {
+          const symptom = commonSymptoms.find(s => s.id === id);
+          return symptom?.name.toLowerCase().replace(/\s+/g, '_');
+        })
+        .filter(Boolean)
+        .join(',');
+
+      console.log('Sending symptoms:', symptomsString); // Debug log
+
       // Make API call to Flask backend
       const response = await fetch('http://localhost:5000/predict', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
-          symptoms: requestData.symptoms.map(s => s.name).join(',')
+          symptoms: symptomsString
         })
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to get prediction');
+      console.log('Response status:', response.status); // Debug log
+
+      // Get the response text first
+      const responseText = await response.text();
+      console.log('Raw response:', responseText); // Debug log
+
+      let data;
+      try {
+        // Try to parse the response as JSON
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse response as JSON:', parseError);
+        throw new Error('Invalid response from server');
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(`Failed to get prediction: ${data.error || response.status}`);
+      }
+
+      console.log('Parsed data:', data); // Debug log
+      
+      setBackendData(data);
       
       // Update analyses with real data from backend
-      setAnalyses(prev => prev.map((analysis, index) => ({
+      setAnalyses(prev => prev.map(analysis => ({
         ...analysis,
         status: 'complete'
       })));
@@ -196,31 +222,102 @@ function PredictionPage({ onBack, onLogout }: PredictionPageProps) {
       setSelectedCategory('disease');
       setRecommendation(data.predicted_disease);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error getting prediction:', error);
       // Show error message to user
-      setRecommendation('Error getting prediction. Please try again.');
+      setRecommendation(`Error: ${error?.message || 'Unknown error occurred'}`);
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  const handleCategoryClick = async (categoryId: string) => {
+  const handleCategoryClick = (categoryId: string) => {
+    if (!backendData) return;
+
     setSelectedCategory(categoryId);
-    setRecommendation(null);
-
-    // Mock recommendations for each category
-    const mockRecommendations: Record<string, string> = {
-      disease: "Based on your symptoms, you might have Upper Respiratory Infection (URI).\n\nSeverity: Mild to Moderate\nDuration: 7-10 days\nContagious Period: First 3-4 days",
-      description: "Your symptoms suggest an acute viral infection affecting the upper respiratory tract. The combination of sore throat, fever, and cough is typical of viral URI.",
-      medications: "1. Acetaminophen (500mg every 6 hours) for fever and pain\n2. Dextromethorphan for cough suppression\n3. Saline nasal spray for congestion\n4. Throat lozenges for sore throat",
-      workouts: "During recovery:\n1. Light walking (15-20 minutes)\n2. Gentle stretching\n3. Deep breathing exercises\n4. Resume normal exercise only after symptoms resolve",
-      diets: "Recommended diet during recovery:\n1. Clear broths and soups\n2. Warm herbal tea with honey\n3. Citrus fruits (Vitamin C)\n4. Stay well hydrated (8-10 glasses of water)\n5. Avoid dairy products temporarily"
-    };
-
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setRecommendation(mockRecommendations[categoryId]);
+    setRecommendation(null); // Clear previous recommendation while formatting
+    
+    // Format and set the recommendation based on category
+    switch (categoryId) {
+      case 'disease':
+        setRecommendation(`Predicted Disease: ${backendData.predicted_disease}`);
+        break;
+      case 'description':
+        setRecommendation(`Description:\n${backendData.description}`);
+        break;
+      case 'medications':
+        // Format medications data properly
+        let medsDisplay = "Recommended Medications:\n";
+        
+        if (typeof backendData.medications === 'string') {
+          // If it's a string that contains a list representation
+          if (backendData.medications.includes('[') && backendData.medications.includes(']')) {
+            // Extract items between brackets and split by comma
+            const items = backendData.medications
+              .replace(/[\[\]']/g, '') // Remove brackets and single quotes
+              .split(',')
+              .map((item: string) => item.trim());
+            
+            // Format with numbers
+            medsDisplay += items.map((item: string, i: number) => `${i + 1}. ${item}`).join('\n');
+          } else {
+            // Regular string
+            medsDisplay += backendData.medications;
+          }
+        } else if (Array.isArray(backendData.medications)) {
+          // If it's already an array
+          medsDisplay += (backendData.medications as string[]).map((item: string, i: number) => `${i + 1}. ${item}`).join('\n');
+        } else {
+          // Fallback
+          medsDisplay += "No medication information available";
+        }
+        
+        setRecommendation(medsDisplay);
+        break;
+      case 'workouts':
+        const workouts = Array.isArray(backendData.workout) 
+          ? backendData.workout.map((w, i) => `${i + 1}. ${w}`).join('\n')
+          : backendData.workout;
+        setRecommendation(`Recommended Workouts:\n${workouts}`);
+        break;
+      case 'diets':
+        // Simple approach to format diet data
+        let dietDisplay = "Recommended Diet:\n";
+        
+        if (typeof backendData.diet === 'string') {
+          // If it's a string that contains a list representation
+          if (backendData.diet.includes('[') && backendData.diet.includes(']')) {
+            // Extract items between brackets and split by comma
+            const items = backendData.diet
+              .replace(/[\[\]']/g, '') // Remove brackets and single quotes
+              .split(',')
+              .map((item: string) => item.trim());
+            
+            // Format with numbers
+            dietDisplay += items.map((item: string, i: number) => `${i + 1}. ${item}`).join('\n');
+          } else {
+            // Regular string
+            dietDisplay += backendData.diet;
+          }
+        } else if (Array.isArray(backendData.diet)) {
+          // If it's already an array
+          dietDisplay += (backendData.diet as string[]).map((item: string, i: number) => `${i + 1}. ${item}`).join('\n');
+        } else {
+          // Fallback
+          dietDisplay += "No diet information available";
+        }
+        
+        setRecommendation(dietDisplay);
+        break;
+      case 'precautions':
+        const precautions = Array.isArray(backendData.precautions)
+          ? backendData.precautions.map((p, i) => `${i + 1}. ${p}`).join('\n')
+          : backendData.precautions;
+        setRecommendation(`Precautions to Take:\n${precautions}`);
+        break;
+      default:
+        setRecommendation('No recommendation available for this category.');
+    }
   };
 
   const canPredict = selectedSymptoms.length > 0 || additionalInfo.trim().length > 0;
