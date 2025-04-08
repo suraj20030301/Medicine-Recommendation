@@ -13,10 +13,18 @@ CORS(app)  # Enable CORS for all routes
 # load databasedataset===================================
 class Recommendation:
     def __init__(self, input_symptoms):
-        if "," in input_symptoms:
-            self.input_symptoms = input_symptoms.split(",")
+        # Modify how we handle input symptoms
+        if isinstance(input_symptoms, str):
+            # Split by comma and clean up each symptom
+            self.input_symptoms = [
+                symptom.strip().lower().replace(' ', '_') 
+                for symptom in input_symptoms.split(',')
+                if symptom.strip()
+            ]
         else:
             self.input_symptoms = [input_symptoms]
+
+        print("Processed input symptoms:", self.input_symptoms)  # Debug log
 
         # Use relative paths instead of hardcoded paths
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -31,38 +39,73 @@ class Recommendation:
         self.dataset_description = pd.read_csv(os.path.join(current_dir, "data sets", "description.csv"))
         self.dataset_medication = pd.read_csv(os.path.join(current_dir, "data sets", "medications.csv"))
         self.dataset_precautions = pd.read_csv(os.path.join(current_dir, "data sets", "precautions_df.csv"))
-        self.dataset_workout = pd.read_csv(os.path.join(current_dir, "data sets", "workout_df.csv"))
         
         # Clean up datasets
         if "Unnamed: 0" in self.dataset_precautions.columns:
             self.dataset_precautions = self.dataset_precautions.drop(columns=["Unnamed: 0"], axis=1)
         
-        if self.dataset_workout.shape[1] > 2:
-            self.dataset_workout = self.dataset_workout.iloc[:, 2:]
-
         self.disease = self.predict()
     
     def find_closest_symptom(self, symptom):
+        """
+        Find the closest matching symptom in our dataset.
+        """
+        # Clean up the input symptom
+        symptom = symptom.strip().lower()
         # Replace underscores with spaces for matching
         symptom = symptom.replace('_', ' ')
+        
+        print(f"Finding match for symptom: {symptom}")  # Debug log
+        print(f"Available columns: {self.columns}")  # Debug log
+        
         # Get matches with a cutoff of 0.6 (adjust this value if needed)
         matches = difflib.get_close_matches(symptom, self.columns, n=1, cutoff=0.6)
-        return matches[0] if matches else None
+        
+        if matches:
+            print(f"Found match: {matches[0]} for input: {symptom}")  # Debug log
+            return matches[0]
+        else:
+            print(f"No match found for: {symptom}")  # Debug log
+            return None
 
     def predict(self):
-        input_vector = np.zeros(len(self.columns))
-        for symptom in self.input_symptoms:
-            matched_symptom = self.find_closest_symptom(symptom)
-            if matched_symptom:
-                index = np.where(self.columns == matched_symptom)[0][0]
-                input_vector[index] = 1
-                print(f"Matched '{symptom}' to '{matched_symptom}'")
-            else:
-                print(f"Warning: Could not find close match for symptom '{symptom}'")
+        try:
+            if not self.input_symptoms or all(not s for s in self.input_symptoms):
+                print("No valid symptoms provided")
+                return None
 
-        # Use shape parameter instead of newshape
-        input_vector = np.reshape(input_vector, shape=(1, -1))
-        return self.le.inverse_transform(self.model.predict(input_vector))[0]
+            input_vector = np.zeros(len(self.columns))
+            matched_symptoms = []
+
+            for symptom in self.input_symptoms:
+                if not symptom:  # Skip empty symptoms
+                    continue
+                
+                matched_symptom = self.find_closest_symptom(symptom)
+                if matched_symptom:
+                    index = np.where(self.columns == matched_symptom)[0][0]
+                    input_vector[index] = 1
+                    matched_symptoms.append(f"Matched '{symptom}' to '{matched_symptom}'")
+                else:
+                    print(f"Warning: Could not find close match for symptom '{symptom}'")
+
+            if not matched_symptoms:
+                print("No symptoms could be matched")
+                return None
+
+            print("Matched symptoms:", matched_symptoms)  # Debug log
+            
+            # Use shape parameter instead of newshape
+            input_vector = np.reshape(input_vector, shape=(1, -1))
+            prediction = self.le.inverse_transform(self.model.predict(input_vector))[0]
+            print(f"Predicted disease: {prediction}")
+            return prediction
+            
+        except Exception as e:
+            print(f"Error in predict method: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return None
     
     def clean_list_data(self, data):
         if isinstance(data, (list, np.ndarray)):
@@ -97,16 +140,14 @@ class Recommendation:
         return self.clean_list_data(med_data)
     
     def get_precautions(self):
+        """
+        Get precautions for a specific disease.
+        """
         if self.disease not in self.dataset_precautions["Disease"].values:
-            return ["No precautions found"]
+            return ["No specific precautions found for this condition"]
+            
         precaution_data = self.dataset_precautions[self.dataset_precautions["Disease"] == self.disease].iloc[:, 1:].values[0]
         return self.clean_list_data(precaution_data)
-    
-    def get_workout(self):
-        if self.disease not in self.dataset_workout["disease"].values:
-            return ["No workout info found"]
-        workout_data = self.dataset_workout[self.dataset_workout["disease"] == self.disease].iloc[:, 1:].values[0][0]
-        return self.clean_list_data(workout_data)
 
 @app.route("/")
 def index():
@@ -116,7 +157,8 @@ def index():
 def predict():
     try:
         print("Received request headers:", request.headers)
-        print("Received request data:", request.get_data())
+        raw_data = request.get_data()
+        print("Raw request data:", raw_data)
 
         if not request.is_json:
             print("Request is not JSON")
@@ -129,25 +171,52 @@ def predict():
         
         if not data or 'symptoms' not in data:
             return jsonify({
-                'error': 'No symptoms provided'
+                'error': 'No symptoms provided in request'
             }), 400
 
-        symptoms = data['symptoms']
-        print("Processing symptoms:", symptoms)
+        symptoms = data.get('symptoms', '').strip()
+        print("Extracted symptoms:", symptoms)
         
-        recommendation = Recommendation(symptoms)
-        
-        response_data = {
-            'predicted_disease': recommendation.disease,
-            'description': recommendation.get_description(),
-            'medications': recommendation.get_medication(),
-            'diet': recommendation.get_diet(),
-            'precautions': recommendation.get_precautions(),
-            'workout': recommendation.get_workout()
-        }
+        if not symptoms:
+            return jsonify({
+                'error': 'Empty symptoms string provided'
+            }), 400
 
-        print("Sending response:", response_data)
-        return jsonify(response_data)
+        # Split symptoms by comma and clean them
+        symptom_list = [s.strip() for s in symptoms.split(',') if s.strip()]
+        print("Processed symptom list:", symptom_list)
+        
+        if not symptom_list:
+            return jsonify({
+                'error': 'No valid symptoms found after processing'
+            }), 400
+
+        try:
+            recommendation = Recommendation(symptoms)
+            
+            if not recommendation.disease:
+                return jsonify({
+                    'error': 'Could not predict disease from provided symptoms'
+                }), 500
+                
+            response_data = {
+                'predicted_disease': recommendation.disease,
+                'description': recommendation.get_description(),
+                'medications': recommendation.get_medication(),
+                'diet': recommendation.get_diet(),
+                'precautions': recommendation.get_precautions()
+            }
+
+            print("Sending response:", response_data)
+            return jsonify(response_data)
+            
+        except Exception as model_error:
+            print("Error in model prediction:", str(model_error))
+            import traceback
+            traceback.print_exc()
+            return jsonify({
+                'error': f'Error in model prediction: {str(model_error)}'
+            }), 500
 
     except Exception as e:
         print("Error occurred:", str(e))

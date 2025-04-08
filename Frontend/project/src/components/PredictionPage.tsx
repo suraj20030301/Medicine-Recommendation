@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Stethoscope, LogOut, Activity, Heart, Brain, Pill, Dumbbell, Apple, FileText, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Stethoscope, LogOut, Activity, Heart, Brain, Pill, Apple, FileText, CheckCircle2, Shield } from 'lucide-react';
 
 interface PredictionPageProps {
   onBack: () => void;
@@ -97,23 +97,23 @@ const recommendationCategories: RecommendationCategory[] = [
     hoverBg: 'hover:bg-rose-100'
   },
   { 
-    id: 'workouts', 
-    title: 'Workouts', 
-    icon: <Dumbbell className="h-6 w-6" />, 
+    id: 'precautions',
+    title: 'Precautions',
+    icon: <Shield className="h-6 w-6" />,
     bgColor: 'bg-emerald-50',
     borderColor: 'border-emerald-200',
     textColor: 'text-emerald-700',
     hoverBg: 'hover:bg-emerald-100'
   },
   { 
-    id: 'diets', 
-    title: 'Diets', 
-    icon: <Apple className="h-6 w-6" />, 
+    id: 'diet', 
+    title: 'Diet', 
+    icon: <Apple className="h-6 w-6" />,
     bgColor: 'bg-yellow-50',
     borderColor: 'border-yellow-200',
     textColor: 'text-yellow-700',
     hoverBg: 'hover:bg-yellow-100'
-  },
+  }
 ];
 
 function PredictionPage({ onBack, onLogout }: PredictionPageProps) {
@@ -129,7 +129,6 @@ function PredictionPage({ onBack, onLogout }: PredictionPageProps) {
     medications: string;
     diet: string;
     precautions: string[];
-    workout: string[];
   } | null>(null);
   const [analyses, setAnalyses] = useState<Analysis[]>([
     {
@@ -200,11 +199,18 @@ function PredictionPage({ onBack, onLogout }: PredictionPageProps) {
         data = JSON.parse(responseText);
       } catch (parseError) {
         console.error('Failed to parse response as JSON:', parseError);
-        throw new Error('Invalid response from server');
+        throw new Error(`Invalid response from server: ${responseText.substring(0, 100)}...`);
       }
 
       if (!response.ok) {
+        console.error('API error response:', data);
         throw new Error(`Failed to get prediction: ${data.error || response.status}`);
+      }
+
+      // Validate the response data structure
+      if (!data.predicted_disease) {
+        console.error('Missing predicted_disease in response:', data);
+        throw new Error('Invalid response format: missing predicted_disease');
       }
 
       console.log('Parsed data:', data); // Debug log
@@ -224,8 +230,9 @@ function PredictionPage({ onBack, onLogout }: PredictionPageProps) {
 
     } catch (error: any) {
       console.error('Error getting prediction:', error);
-      // Show error message to user
+      // Show error message to user with more details
       setRecommendation(`Error: ${error?.message || 'Unknown error occurred'}`);
+      setShowCategories(false);
     } finally {
       setIsAnalyzing(false);
     }
@@ -237,7 +244,6 @@ function PredictionPage({ onBack, onLogout }: PredictionPageProps) {
     setSelectedCategory(categoryId);
     setRecommendation(null); // Clear previous recommendation while formatting
     
-    // Format and set the recommendation based on category
     switch (categoryId) {
       case 'disease':
         setRecommendation(`Predicted Disease: ${backendData.predicted_disease}`);
@@ -246,74 +252,31 @@ function PredictionPage({ onBack, onLogout }: PredictionPageProps) {
         setRecommendation(`Description:\n${backendData.description}`);
         break;
       case 'medications':
-        // Format medications data properly
         let medsDisplay = "Recommended Medications:\n";
-        
-        if (typeof backendData.medications === 'string') {
-          // If it's a string that contains a list representation
-          if (backendData.medications.includes('[') && backendData.medications.includes(']')) {
-            // Extract items between brackets and split by comma
-            const items = backendData.medications
-              .replace(/[\[\]']/g, '') // Remove brackets and single quotes
-              .split(',')
-              .map((item: string) => item.trim());
-            
-            // Format with numbers
-            medsDisplay += items.map((item: string, i: number) => `${i + 1}. ${item}`).join('\n');
-          } else {
-            // Regular string
-            medsDisplay += backendData.medications;
-          }
-        } else if (Array.isArray(backendData.medications)) {
-          // If it's already an array
-          medsDisplay += (backendData.medications as string[]).map((item: string, i: number) => `${i + 1}. ${item}`).join('\n');
+        if (Array.isArray(backendData.medications)) {
+          medsDisplay += backendData.medications.map((med, i) => `${i + 1}. ${med}`).join('\n');
         } else {
-          // Fallback
-          medsDisplay += "No medication information available";
+          medsDisplay += backendData.medications;
         }
-        
         setRecommendation(medsDisplay);
         break;
-      case 'workouts':
-        const workouts = Array.isArray(backendData.workout) 
-          ? backendData.workout.map((w, i) => `${i + 1}. ${w}`).join('\n')
-          : backendData.workout;
-        setRecommendation(`Recommended Workouts:\n${workouts}`);
-        break;
-      case 'diets':
-        // Simple approach to format diet data
-        let dietDisplay = "Recommended Diet:\n";
-        
-        if (typeof backendData.diet === 'string') {
-          // If it's a string that contains a list representation
-          if (backendData.diet.includes('[') && backendData.diet.includes(']')) {
-            // Extract items between brackets and split by comma
-            const items = backendData.diet
-              .replace(/[\[\]']/g, '') // Remove brackets and single quotes
-              .split(',')
-              .map((item: string) => item.trim());
-            
-            // Format with numbers
-            dietDisplay += items.map((item: string, i: number) => `${i + 1}. ${item}`).join('\n');
-          } else {
-            // Regular string
-            dietDisplay += backendData.diet;
-          }
-        } else if (Array.isArray(backendData.diet)) {
-          // If it's already an array
-          dietDisplay += (backendData.diet as string[]).map((item: string, i: number) => `${i + 1}. ${item}`).join('\n');
-        } else {
-          // Fallback
-          dietDisplay += "No diet information available";
-        }
-        
-        setRecommendation(dietDisplay);
-        break;
       case 'precautions':
-        const precautions = Array.isArray(backendData.precautions)
-          ? backendData.precautions.map((p, i) => `${i + 1}. ${p}`).join('\n')
-          : backendData.precautions;
-        setRecommendation(`Precautions to Take:\n${precautions}`);
+        let precautionsDisplay = "Recommended Precautions:\n";
+        if (Array.isArray(backendData.precautions)) {
+          precautionsDisplay += backendData.precautions.map((p, i) => `${i + 1}. ${p}`).join('\n');
+        } else {
+          precautionsDisplay += backendData.precautions || "No specific precautions available";
+        }
+        setRecommendation(precautionsDisplay);
+        break;
+      case 'diet':
+        let dietDisplay = "Recommended Diet:\n";
+        if (Array.isArray(backendData.diet)) {
+          dietDisplay += backendData.diet.map((d, i) => `${i + 1}. ${d}`).join('\n');
+        } else {
+          dietDisplay += backendData.diet;
+        }
+        setRecommendation(dietDisplay);
         break;
       default:
         setRecommendation('No recommendation available for this category.');
@@ -401,17 +364,22 @@ function PredictionPage({ onBack, onLogout }: PredictionPageProps) {
               />
             </div>
 
-            <button
-              onClick={handlePredict}
-              disabled={!canPredict || isAnalyzing}
-              className={`w-full py-4 px-6 text-lg font-medium rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 ${
-                canPredict && !isAnalyzing
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl'
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              {isAnalyzing ? 'Analyzing...' : 'Get Recommendation'}
-            </button>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              handlePredict();
+            }} className="space-y-6">
+              <button
+                type="submit"
+                disabled={!additionalInfo.trim()}
+                className={`w-full py-4 rounded-xl text-white font-medium transition-all duration-200 ${
+                  additionalInfo.trim()
+                    ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
+                    : 'bg-gray-400 cursor-not-allowed'
+                }`}
+              >
+                Get Recommendation
+              </button>
+            </form>
 
             {isAnalyzing && (
               <div className="space-y-4 bg-gray-50 rounded-xl p-6 border border-gray-100">
