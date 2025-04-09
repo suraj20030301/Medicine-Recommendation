@@ -56,7 +56,7 @@ class Recommendation:
         symptom = symptom.replace('_', ' ')
         
         print(f"Finding match for symptom: {symptom}")  # Debug log
-        print(f"Available columns: {self.columns}")  # Debug log
+        #print(f"Available columns: {self.columns}")  # Debug log
         
         # Get matches with a cutoff of 0.6 (adjust this value if needed)
         matches = difflib.get_close_matches(symptom, self.columns, n=1, cutoff=0.6)
