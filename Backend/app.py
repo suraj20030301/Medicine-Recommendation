@@ -1,14 +1,25 @@
-from flask import Flask, request, render_template, jsonify
+from __init__ import create_app
 from flask_cors import CORS
 import numpy as np
 import pandas as pd
 import pickle
 import os
 import difflib
+from config import Config
 
-# flask app
-app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+app = create_app()
+
+# Configure CORS
+CORS(app, resources={
+    r"/api/*": {  # Apply CORS to all /api routes
+        "origins": ["http://localhost:5173"],  # React dev server
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
+
+# Import routes after app initialization
+from user import routes
 
 # load databasedataset===================================
 class Recommendation:
@@ -149,9 +160,7 @@ class Recommendation:
         precaution_data = self.dataset_precautions[self.dataset_precautions["Disease"] == self.disease].iloc[:, 1:].values[0]
         return self.clean_list_data(precaution_data)
 
-@app.route("/")
-def index():
-    return render_template("index.html")
+
 
 @app.route('/predict', methods=['POST'])
 def predict():

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ArrowLeft, UserPlus, LogIn, Lock, Mail } from 'lucide-react';
+import { ArrowLeft, UserPlus, LogIn, Lock, Mail, User } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 interface AuthPageProps {
   onAuthSuccess: () => void;
@@ -8,27 +9,27 @@ interface AuthPageProps {
 
 function AuthPage({ onAuthSuccess, onBack }: AuthPageProps) {
   const [isLogin, setIsLogin] = useState(true);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { login, signup, error: authError } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setIsLoading(true);
 
-    if (email && password) {
-      if (!email.includes('@')) {
-        setError('Please enter a valid email address');
-        return;
+    try {
+      if (isLogin) {
+        await login(email, password);
+      } else {
+        await signup(name, email, password);
       }
-      if (password.length < 6) {
-        setError('Password must be at least 6 characters long');
-        return;
-      }
-      
       onAuthSuccess();
-    } else {
-      setError('Please fill in all fields');
+    } catch (error) {
+      console.error('Authentication error:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -60,6 +61,26 @@ function AuthPage({ onAuthSuccess, onBack }: AuthPageProps) {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {!isLogin && (
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                    Full Name
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="text"
+                      id="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="pl-10 w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="John Doe"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                   Email address
@@ -73,6 +94,7 @@ function AuthPage({ onAuthSuccess, onBack }: AuthPageProps) {
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10 w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="you@example.com"
+                    required
                   />
                 </div>
               </div>
@@ -90,21 +112,27 @@ function AuthPage({ onAuthSuccess, onBack }: AuthPageProps) {
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10 w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="••••••••"
+                    required
                   />
                 </div>
               </div>
 
-              {error && (
+              {authError && (
                 <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
-                  <p className="text-red-700 text-sm">{error}</p>
+                  <p className="text-red-700 text-sm">{authError}</p>
                 </div>
               )}
 
               <button
                 type="submit"
-                className="w-full flex justify-center items-center px-4 py-3 text-lg font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-lg hover:shadow-xl transition-all duration-200"
+                disabled={isLoading}
+                className={`w-full flex justify-center items-center px-4 py-3 text-lg font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-lg hover:shadow-xl transition-all duration-200 ${
+                  isLoading ? 'opacity-75 cursor-not-allowed' : ''
+                }`}
               >
-                {isLogin ? (
+                {isLoading ? (
+                  'Processing...'
+                ) : isLogin ? (
                   <>
                     <LogIn className="h-5 w-5 mr-2" />
                     Sign In
