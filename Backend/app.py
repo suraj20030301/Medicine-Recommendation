@@ -1,5 +1,6 @@
 from __init__ import create_app
 from flask_cors import CORS
+from flask import request, jsonify
 import numpy as np
 import pandas as pd
 import pickle
@@ -9,14 +10,8 @@ from config import Config
 
 app = create_app()
 
-# Configure CORS
-CORS(app, resources={
-    r"/api/*": {  # Apply CORS to all /api routes
-        "origins": ["http://localhost:5173"],  # React dev server
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
-    }
-})
+# Configure CORS - simpler configuration
+CORS(app)
 
 # Import routes after app initialization
 from user import routes
@@ -165,9 +160,10 @@ class Recommendation:
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
+        print("\n=== New Prediction Request ===")
         print("Received request headers:", request.headers)
         raw_data = request.get_data()
-        print("Raw request data:", raw_data)
+        print("Raw request data:", raw_data.decode('utf-8'))
 
         if not request.is_json:
             print("Request is not JSON")
@@ -179,14 +175,18 @@ def predict():
         print("Parsed JSON data:", data)
         
         if not data or 'symptoms' not in data:
+            print("No symptoms in request data")
             return jsonify({
                 'error': 'No symptoms provided in request'
             }), 400
 
         symptoms = data.get('symptoms', '').strip()
-        print("Extracted symptoms:", symptoms)
+        additional_info = data.get('additional_info', '').strip()
+        print(f"Extracted symptoms: {symptoms}")
+        print(f"Additional info: {additional_info}")
         
         if not symptoms:
+            print("Empty symptoms string")
             return jsonify({
                 'error': 'Empty symptoms string provided'
             }), 400
@@ -196,6 +196,7 @@ def predict():
         print("Processed symptom list:", symptom_list)
         
         if not symptom_list:
+            print("No valid symptoms after processing")
             return jsonify({
                 'error': 'No valid symptoms found after processing'
             }), 400
@@ -204,6 +205,7 @@ def predict():
             recommendation = Recommendation(symptoms)
             
             if not recommendation.disease:
+                print("Could not predict disease")
                 return jsonify({
                     'error': 'Could not predict disease from provided symptoms'
                 }), 500

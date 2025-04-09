@@ -173,7 +173,17 @@ function PredictionPage({ onBack, onLogout }: PredictionPageProps) {
         .filter(Boolean)
         .join(',');
 
-      console.log('Sending symptoms:', symptomsString); // Debug log
+      console.log('Form submission details:');
+      console.log('Selected Symptoms:', selectedSymptoms);
+      console.log('Formatted Symptoms String:', symptomsString);
+      console.log('Additional Info:', additionalInfo);
+
+      const requestBody = {
+        symptoms: symptomsString,
+        additional_info: additionalInfo.trim()
+      };
+      
+      console.log('Request body being sent:', JSON.stringify(requestBody, null, 2));
 
       // Make API call to Flask backend
       const response = await fetch('http://localhost:5000/predict', {
@@ -182,12 +192,10 @@ function PredictionPage({ onBack, onLogout }: PredictionPageProps) {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify({
-          symptoms: symptomsString
-        })
+        body: JSON.stringify(requestBody)
       });
 
-      console.log('Response status:', response.status); // Debug log
+      console.log('Response received:', response.status); // Debug log
 
       // Get the response text first
       const responseText = await response.text();
@@ -229,9 +237,16 @@ function PredictionPage({ onBack, onLogout }: PredictionPageProps) {
       setRecommendation(data.predicted_disease);
 
     } catch (error: any) {
-      console.error('Error getting prediction:', error);
-      // Show error message to user with more details
-      setRecommendation(`Error: ${error?.message || 'Unknown error occurred'}`);
+      console.error('Detailed error:', error);
+      let errorMessage = 'Failed to fetch: ';
+      
+      if (error.message.includes('Failed to fetch')) {
+        errorMessage += 'Cannot connect to the backend server. Please ensure the server is running at http://localhost:5000';
+      } else {
+        errorMessage += error?.message || 'Unknown error occurred';
+      }
+      
+      setRecommendation(errorMessage);
       setShowCategories(false);
     } finally {
       setIsAnalyzing(false);
