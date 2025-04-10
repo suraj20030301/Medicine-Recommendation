@@ -72,16 +72,6 @@ def login_required(f):
   
   return wrap
 
-# Routes
-@app.route('/')
-def home():
-  return render_template('home.html')
-
-@app.route('/dashboard/')
-@login_required
-def dashboard():
-  return render_template('dashboard.html')
-
 
 if __name__ == '__main__':
   app.run(debug=True)
