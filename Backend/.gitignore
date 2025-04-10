@@ -1,2 +1,14 @@
 myev/
+
+# Ignore environment variables
 .env
+
+# Python specific
+__pycache__/
+*.pyc
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
